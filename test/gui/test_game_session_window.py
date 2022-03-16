@@ -1,7 +1,7 @@
 import datetime
 
 import pytest
-from PySide2 import QtWidgets
+from PySide6 import QtWidgets
 from mock import MagicMock, AsyncMock, ANY
 
 from randovania.game_connection.game_connection import GameConnection
@@ -433,10 +433,11 @@ async def test_save_iso(window, mocker, echoes_game_description):
                                        return_value=QtWidgets.QDialog.Accepted)
 
     preset = MagicMock()
+    # preset.game = RandovaniaGame.METROID_PRIME_ECHOES
     window._game_session = MagicMock()
     window._game_session.players[window.network_client.current_user.id].is_observer = False
     window._game_session.players[window.network_client.current_user.id].row = 0
-    window._game_session.presets = {0: preset}
+    window._game_session.presets = [preset]
     window.network_client.session_admin_player = AsyncMock()
 
     patch_data = window.network_client.session_admin_player.return_value
@@ -453,6 +454,7 @@ async def test_save_iso(window, mocker, echoes_game_description):
         patch_data,
         window._game_session.game_details.word_hash,
         False,
+        [game],
     )
     mock_execute_dialog.assert_awaited_once_with(game.gui.export_dialog.return_value)
     game.exporter.export_game.assert_called_once_with(
@@ -465,7 +467,7 @@ async def test_save_iso(window, mocker, echoes_game_description):
 @pytest.mark.parametrize("is_member", [False, True])
 async def test_on_close_event(window: GameSessionWindow, mocker, is_member):
     # Setup
-    super_close_event = mocker.patch("PySide2.QtWidgets.QMainWindow.closeEvent")
+    super_close_event = mocker.patch("PySide6.QtWidgets.QMainWindow.closeEvent")
     event = MagicMock()
     window._game_session = MagicMock()
     window._game_session.players = [window.network_client.current_user.id] if is_member else []

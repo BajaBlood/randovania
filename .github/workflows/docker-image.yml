@@ -13,7 +13,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
@@ -58,7 +58,7 @@ jobs:
       -
         name: Login to DockerHub
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@v1.13.0 
+        uses: docker/login-action@v1.14.0 
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -66,7 +66,7 @@ jobs:
       -
         name: Build and push
         id: docker_build
-        uses: docker/build-push-action@v2.9.0
+        uses: docker/build-push-action@v2.10.0
         with:
           context: .
           file: ./Dockerfile.server
@@ -92,10 +92,10 @@ jobs:
     if: ${{ github.event_name != 'pull_request' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Python
-        uses: actions/setup-python@v2.3.2
+        uses: actions/setup-python@v3
         with:
           python-version: 3.7
 
@@ -109,23 +109,32 @@ jobs:
           key: ${{ secrets.SERVER_DEPLOYMENT_KEY }}
           known_hosts: ${{ secrets.SERVER_KNOWN_HOSTS }}
 
+      - name: Decide environment
+        id: decide_env
+        run: |
+          ENV=staging
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            ENV=production
+          fi
+          echo ::set-output name=env::${ENV}
+
       - name: start deployment
-        uses: bobheadxi/deployments@v0.6.2
+        uses: bobheadxi/deployments@v1.1.0
         id: deployment
         with:
           step: start
           token: ${{ secrets.GITHUB_TOKEN }}
-          env: staging
+          env: ${{ steps.decide_env.outputs.env }}
 
       - name: deploy server
         run: python tools/deploy_server.py
 
       - name: update deployment status
-        uses: bobheadxi/deployments@v0.6.2
-        # Using 0.4.3 because of this: https://github.com/bobheadxi/deployments/issues/27
+        uses: bobheadxi/deployments@v1.1.0
         if: always()
         with:
           step: finish
           token: ${{ secrets.GITHUB_TOKEN }}
           status: ${{ job.status }}
+          env: ${{ steps.deployment.outputs.env }}
           deployment_id: ${{ steps.deployment.outputs.deployment_id }}
